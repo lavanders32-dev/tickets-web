@@ -2,115 +2,394 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>Tickets Gratis</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Gestión de Tickets de Servicio Técnico</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="bg-gray-100 p-4">
-  <div id="login" class="max-w-md mx-auto bg-white p-6 rounded shadow mt-10">
-    <h2 class="text-xl font-bold mb-4">Login</h2>
-    <input type="email" id="email" placeholder="admin@admin.com" class="border w-full p-2 mb-2 rounded">
-    <input type="password" id="pass" placeholder="admin123" class="border w-full p-2 mb-4 rounded">
-    <button onclick="login()" class="bg-blue-600 text-white w-full py-2 rounded">Entrar</button>
+<body class="bg-gray-100 text-gray-800">
+
+  <!-- Login Modal -->
+  <div id="loginSection" class="fixed inset-0 bg-slate-900 bg-opacity-90 flex items-center justify-center p-4 z-50">
+    <div class="bg-white p-6 rounded-lg shadow-2xl w-full max-w-md">
+      <h2 class="text-2xl font-bold mb-4 text-center text-slate-800">Acceso al Sistema</h2>
+      <form id="loginForm" class="space-y-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Email</label>
+          <input type="email" id="loginEmail" value="admin@admin.com" required class="w-full border p-2 rounded outline-none focus:ring-2 focus:ring-blue-600">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">Contraseña</label>
+          <input type="password" id="loginPassword" value="admin123" required class="w-full border p-2 rounded outline-none focus:ring-2 focus:ring-blue-600">
+        </div>
+        <button type="submit" class="w-full bg-blue-700 text-white py-2 rounded font-bold hover:bg-blue-800 transition">Iniciar Sesión</button>
+      </form>
+    </div>
   </div>
 
-  <div id="app" class="hidden max-w-4xl mx-auto bg-white p-6 rounded shadow">
-    <div class="flex justify-between items-center mb-6">
-      <h1 class="text-2xl font-bold">Gestión de Tickets</h1>
-      <button onclick="logout()" class="bg-red-500 text-white px-3 py-1 rounded">Cerrar Sesión</button>
-    </div>
+  <!-- Dashboard App -->
+  <div id="app" class="hidden min-h-screen flex flex-col">
+    <!-- Navbar -->
+    <header class="bg-slate-900 text-white px-6 py-4 flex justify-between items-center shadow">
+      <h1 class="text-xl font-bold tracking-wide">SISTEMA DE TICKETS</h1>
+      <div class="flex items-center gap-4">
+        <span id="userInfo" class="text-sm bg-slate-800 px-3 py-1 rounded"></span>
+        <button onclick="logout()" class="bg-red-600 px-3 py-1 text-sm font-semibold rounded hover:bg-red-700">Salir</button>
+      </div>
+    </header>
 
-    <!-- Formulario Crear Ticket -->
-    <div class="mb-6 p-4 border rounded">
-      <h3 class="font-bold mb-2">Crear Ticket</h3>
-      <input type="text" id="titulo" placeholder="Título" class="border w-full p-2 mb-2 rounded">
-      <textarea id="desc" placeholder="Descripción" class="border w-full p-2 mb-2 rounded"></textarea>
-      <select id="marca" class="border w-full p-2 mb-2 rounded"></select>
-      <button onclick="crearTicket()" class="bg-green-600 text-white px-4 py-2 rounded">Guardar</button>
-    </div>
+    <!-- Main Workspace -->
+    <div class="flex flex-1">
+      <!-- Sidebar Nav -->
+      <nav class="w-64 bg-slate-800 text-slate-200 p-4 space-y-2">
+        <button onclick="showTab('listTab')" class="w-full text-left py-2 px-3 rounded hover:bg-slate-700 font-medium">📋 Todos los Tickets</button>
+        <button onclick="showTab('createTab')" class="w-full text-left py-2 px-3 rounded hover:bg-slate-700 font-medium">➕ Nuevo Ticket</button>
+      </nav>
 
-    <!-- Listado -->
-    <div id="lista" class="space-y-4"></div>
+      <!-- Content Area -->
+      <main class="flex-1 p-6">
+        
+        <!-- Pestaña: Lista de Tickets -->
+        <section id="listTab" class="space-y-4">
+          <div class="bg-white p-4 rounded shadow grid grid-cols-1 md:grid-cols-4 gap-3">
+            <input type="text" id="filterCliente" placeholder="Buscar Cliente..." class="border p-2 rounded text-sm">
+            <select id="filterEquipo" class="border p-2 rounded text-sm">
+              <option value="">Todos los Equipos</option>
+              <option value="Escritorio">Escritorio</option>
+              <option value="Portátil">Portátil</option>
+              <option value="Todo en uno">Todo en uno</option>
+            </select>
+            <select id="filterEstado" class="border p-2 rounded text-sm">
+              <option value="">Todos los Estados</option>
+              <option value="Recepción">Recepción</option>
+              <option value="En revisión">En revisión</option>
+              <option value="En reparación">En reparación</option>
+              <option value="Finalizado">Finalizado</option>
+              <option value="Entregado">Entregado</option>
+              <option value="Cancelado">Cancelado</option>
+            </select>
+            <button onclick="loadTickets(1)" class="bg-blue-600 text-white font-semibold rounded p-2 text-sm">Filtrar</button>
+          </div>
+
+          <div class="bg-white rounded shadow overflow-x-auto">
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-200 text-xs font-bold uppercase text-slate-600">
+                  <th class="p-3">Código</th>
+                  <th class="p-3">Título</th>
+                  <th class="p-3">Cliente</th>
+                  <th class="p-3">Equipo</th>
+                  <th class="p-3">Marca</th>
+                  <th class="p-3">Estado</th>
+                  <th class="p-3">Prioridad</th>
+                  <th class="p-3">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="ticketsTable" class="text-sm divide-y"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <!-- Pestaña: Crear Ticket -->
+        <section id="createTab" class="hidden max-w-3xl bg-white p-6 rounded shadow mx-auto">
+          <h2 class="text-xl font-bold mb-4 border-b pb-2">Crear Nuevo Ticket</h2>
+          <form id="ticketForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="md:col-span-2">
+              <label class="block text-xs font-bold mb-1">Título del Problema *</label>
+              <input type="text" id="titulo" required class="w-full border p-2 rounded">
+            </div>
+            <div class="md:col-span-2">
+              <label class="block text-xs font-bold mb-1">Descripción Detallada *</label>
+              <textarea id="descripcion" required class="w-full border p-2 rounded"></textarea>
+            </div>
+            <div>
+              <label class="block text-xs font-bold mb-1">Tipo de Equipo *</label>
+              <select id="tipo_equipo" onchange="handleTipoEquipoChange()" required class="w-full border p-2 rounded">
+                <option value="">Seleccione...</option>
+                <option value="Escritorio">Escritorio</option>
+                <option value="Portátil">Portátil</option>
+                <option value="Todo en uno">Todo en uno</option>
+              </select>
+            </div>
+            <div id="marcaContainer">
+              <label class="block text-xs font-bold mb-1">Marca *</label>
+              <div class="flex gap-2">
+                <select id="marcaSelect" class="w-full border p-2 rounded"></select>
+                <button type="button" onclick="agregarMarcaManual()" class="bg-gray-200 text-xs px-2 rounded font-bold">+</button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-xs font-bold mb-1">Modelo</label>
+              <input type="text" id="modelo" class="w-full border p-2 rounded">
+            </div>
+            <div>
+              <label class="block text-xs font-bold mb-1">Número de Serie</label>
+              <input type="text" id="numero_serie" class="w-full border p-2 rounded">
+            </div>
+            <div>
+              <label class="block text-xs font-bold mb-1">Cliente *</label>
+              <input type="text" id="cliente" required class="w-full border p-2 rounded">
+            </div>
+            <div>
+              <label class="block text-xs font-bold mb-1">Teléfono Cliente *</label>
+              <input type="text" id="telefono_cliente" required class="w-full border p-2 rounded">
+            </div>
+            <div>
+              <label class="block text-xs font-bold mb-1">Técnico Asignado *</label>
+              <select id="tecnicoSelect" required class="w-full border p-2 rounded"></select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold mb-1">Tipo de Diagnóstico *</label>
+              <select id="tipo_diagnostico" required class="w-full border p-2 rounded">
+                <option value="Preventivo">Preventivo</option>
+                <option value="Correctivo">Correctivo</option>
+                <option value="Garantía">Garantía</option>
+                <option value="Actualización">Actualización</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-bold mb-1">Prioridad *</label>
+              <select id="prioridad" required class="w-full border p-2 rounded">
+                <option value="Baja">Baja</option>
+                <option value="Media">Media</option>
+                <option value="Alta">Alta</option>
+                <option value="Urgente">Urgente</option>
+              </select>
+            </div>
+            <div class="md:col-span-2 pt-4">
+              <button type="submit" class="w-full bg-green-600 text-white font-bold py-2 rounded hover:bg-green-700">Guardar Ticket</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Pestaña: Detalle del Ticket -->
+        <section id="detailTab" class="hidden bg-white p-6 rounded shadow max-w-4xl mx-auto space-y-6">
+          <div class="flex justify-between items-center border-b pb-4">
+            <div>
+              <h2 id="detailCodigo" class="text-2xl font-bold text-blue-700"></h2>
+              <p id="detailTitulo" class="text-gray-600 text-sm"></p>
+            </div>
+            <span id="detailEstado" class="px-3 py-1 rounded text-sm font-bold"></span>
+          </div>
+
+          <div id="detailFields" class="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm bg-gray-50 p-4 rounded"></div>
+
+          <!-- Cambio de Estado y Fotos -->
+          <div class="border p-4 rounded space-y-4">
+            <h3 class="font-bold border-b pb-1">Gestión de Estado y Archivos</h3>
+            <div class="flex gap-4 items-center">
+              <select id="changeEstadoSelect" class="border p-2 rounded text-sm"></select>
+              <button onclick="submitEstadoChange()" class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold">Actualizar Estado</button>
+            </div>
+
+            <div class="border-t pt-3">
+              <h4 class="text-xs font-bold mb-2">Subir Foto al Ticket</h4>
+              <div class="flex flex-wrap gap-2 items-center">
+                <input type="file" id="fotoFile" accept="image/*" class="text-xs">
+                <input type="text" id="fotoDesc" placeholder="Descripción opcional" class="border p-1 rounded text-xs flex-1">
+                <button onclick="submitFoto()" class="bg-slate-700 text-white px-3 py-1 rounded text-xs">Subir Foto</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Galería de Fotos -->
+          <div>
+            <h3 class="font-bold mb-2">Galería de Evidencias</h3>
+            <div id="fotosGallery" class="grid grid-cols-2 md:grid-cols-4 gap-4"></div>
+          </div>
+
+          <!-- Timeline / Historial -->
+          <div>
+            <h3 class="font-bold mb-2">Historial de Transiciones</h3>
+            <ul id="timelineList" class="space-y-2 border-l-2 border-blue-600 pl-4 text-xs"></ul>
+          </div>
+        </section>
+
+      </main>
+    </div>
   </div>
 
   <script>
-    // CAMBIA ESTA URL POR LA DE TU BACKEND EN RENDER:
-    const API_URL = "https://sistema-tickets-api-u0gt.onrender.com/api"; 
+    const API_URL = "https://sistema-tickets-api-u0gt.onrender.com/api";
     let token = localStorage.getItem('token');
+    let currentTicketId = null;
 
-    if (token) cargarDashboard();
+    document.addEventListener('DOMContentLoaded', () => { if (token) showDashboard(); });
 
-    async function login() {
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
       const res = await fetch(`${API_URL}/login`, {
         method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ email: email.value, password: pass.value })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: loginEmail.value, password: loginPassword.value })
       });
       const data = await res.json();
-      if(res.ok) {
+      if (res.ok) {
         token = data.token;
         localStorage.setItem('token', token);
-        cargarDashboard();
+        localStorage.setItem('user', JSON.stringify(data.user));
+        showDashboard();
       } else alert(data.error);
+    });
+
+    function showDashboard() {
+      loginSection.classList.add('hidden');
+      app.classList.remove('hidden');
+      const user = JSON.parse(localStorage.getItem('user'));
+      userInfo.innerText = `${user.nombre} (${user.rol})`;
+      loadTecnicos();
+      showTab('listTab');
     }
 
     function logout() { localStorage.clear(); location.reload(); }
 
-    async function cargarDashboard() {
-      document.getElementById('login').classList.add('hidden');
-      document.getElementById('app').classList.remove('hidden');
-      
-      // Cargar marcas
-      const mRes = await fetch(`${API_URL}/marcas`, { headers: {'Authorization': `Bearer ${token}`} });
-      const marcas = await mRes.json();
-      marca.innerHTML = marcas.map(m => `<option value="${m.id}">${m.nombre}</option>`).join('');
+    function showTab(tabId) {
+      ['listTab', 'createTab', 'detailTab'].forEach(id => document.getElementById(id).classList.add('hidden'));
+      document.getElementById(tabId).classList.remove('hidden');
+      if (tabId === 'listTab') loadTickets(1);
+    }
 
-      // Cargar tickets
-      const tRes = await fetch(`${API_URL}/tickets`, { headers: {'Authorization': `Bearer ${token}`} });
-      const tData = await tRes.json();
-      
-      lista.innerHTML = tData.tickets.map(t => `
-        <div class="border p-4 rounded flex justify-between items-center">
-          <div>
-            <h4 class="font-bold">${t.titulo} <span class="text-xs bg-gray-200 p-1 rounded">${t.estado}</span></h4>
-            <p class="text-sm text-gray-600">${t.descripcion}</p>
-          </div>
-          <div>
-            ${t.estado === 'RECEPCION' ? `<button onclick="cambiar(${t.id}, 'EN_REPARACION')" class="text-xs bg-yellow-500 text-white p-2 rounded">Reparar</button>` : ''}
-            ${t.estado === 'EN_REPARACION' ? `<button onclick="cambiar(${t.id}, 'FINALIZADO')" class="text-xs bg-green-500 text-white p-2 rounded">Finalizar</button>` : ''}
-            ${t.estado !== 'FINALIZADO' ? `<input type="file" onchange="subirFoto(${t.id}, this)" class="text-xs ml-2">` : ''}
-          </div>
-        </div>
+    async function loadTecnicos() {
+      const res = await fetch(`${API_URL}/usuarios`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const data = await res.json();
+      tecnicoSelect.innerHTML = data.map(u => `<option value="${u.id}">${u.nombre}</option>`).join('');
+    }
+
+    async function handleTipoEquipoChange() {
+      const tipo = tipo_equipo.value;
+      if (tipo === 'Todo en uno') {
+        marcaContainer.classList.add('hidden');
+        marcaSelect.innerHTML = `<option value="N/A">N/A</option>`;
+        return;
+      }
+      marcaContainer.classList.remove('hidden');
+      const apiTipo = tipo === 'Escritorio' ? 'ESCRITORIO' : 'PORTATIL';
+      const res = await fetch(`${API_URL}/marcas?tipo=${apiTipo}`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const marcas = await res.json();
+      marcaSelect.innerHTML = marcas.map(m => `<option value="${m.nombre}">${m.nombre}</option>`).join('');
+    }
+
+    async function agregarMarcaManual() {
+      const nueva = prompt("Ingrese la nueva marca:");
+      if (!nueva) return;
+      const tipo = tipo_equipo.value === 'Escritorio' ? 'ESCRITORIO' : 'PORTATIL';
+      await fetch(`${API_URL}/marcas`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ nombre: nueva, tipo_equipo: tipo })
+      });
+      handleTipoEquipoChange();
+    }
+
+    document.getElementById('ticketForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        titulo: titulo.value,
+        descripcion: descripcion.value,
+        tipo_equipo: tipo_equipo.value,
+        marca: marcaSelect.value,
+        modelo: modelo.value,
+        numero_serie: numero_serie.value,
+        cliente: cliente.value,
+        telefono_cliente: telefono_cliente.value,
+        tecnico_id: tecnicoSelect.value,
+        tipo_diagnostico: tipo_diagnostico.value,
+        prioridad: prioridad.value
+      };
+
+      const res = await fetch(`${API_URL}/tickets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        alert('Ticket generado con éxito');
+        ticketForm.reset();
+        showTab('listTab');
+      } else alert((await res.json()).error);
+    });
+
+    async function loadTickets(page) {
+      const url = `${API_URL}/tickets?page=${page}&cliente=${filterCliente.value}&tipo_equipo=${filterEquipo.value}&estado=${filterEstado.value}`;
+      const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+      const data = await res.json();
+
+      ticketsTable.innerHTML = data.tickets.map(t => `
+        <tr>
+          <td class="p-3 font-bold text-blue-600">${t.codigo}</td>
+          <td class="p-3">${t.titulo}</td>
+          <td class="p-3">${t.cliente}</td>
+          <td class="p-3">${t.tipo_equipo}</td>
+          <td class="p-3">${t.marca}</td>
+          <td class="p-3"><span class="px-2 py-1 bg-gray-200 text-xs rounded">${t.estado}</span></td>
+          <td class="p-3 font-semibold">${t.prioridad}</td>
+          <td class="p-3"><button onclick="viewTicket(${t.id})" class="text-xs bg-blue-600 text-white px-2 py-1 rounded">Ver Detalle</button></td>
+        </tr>
       `).join('');
     }
 
-    async function crearTicket() {
-      await fetch(`${API_URL}/tickets`, {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
-        body: JSON.stringify({ titulo: titulo.value, descripcion: desc.value, marca_id: marca.value })
-      });
-      cargarDashboard();
+    async function viewTicket(id) {
+      currentTicketId = id;
+      const res = await fetch(`${API_URL}/tickets/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const { ticket, fotos, historial } = await res.json();
+
+      detailCodigo.innerText = ticket.codigo;
+      detailTitulo.innerText = ticket.titulo;
+      detailEstado.innerText = ticket.estado;
+
+      detailFields.innerHTML = `
+        <div><b>Cliente:</b> ${ticket.cliente}</div>
+        <div><b>Teléfono:</b> ${ticket.telefono_cliente}</div>
+        <div><b>Técnico:</b> ${ticket.tecnico_nombre}</div>
+        <div><b>Equipo:</b> ${ticket.tipo_equipo}</div>
+        <div><b>Marca:</b> ${ticket.marca}</div>
+        <div><b>Modelo:</b> ${ticket.modelo || 'N/A'}</div>
+        <div><b>N/S:</b> ${ticket.numero_serie || 'N/A'}</div>
+        <div><b>Diagnóstico:</b> ${ticket.tipo_diagnostico}</div>
+        <div><b>Prioridad:</b> ${ticket.prioridad}</div>
+      `;
+
+      const estados = ['Recepción', 'En revisión', 'En reparación', 'Finalizado', 'Entregado', 'Cancelado'];
+      changeEstadoSelect.innerHTML = estados.map(e => `<option value="${e}" ${e === ticket.estado ? 'selected' : ''}>${e}</option>`).join('');
+
+      fotosGallery.innerHTML = fotos.map(f => `
+        <div class="border rounded p-1">
+          <img src="${f.url_foto}" class="w-full h-24 object-cover rounded">
+          <p class="text-[10px] text-gray-500 mt-1">${f.estado_asociado}: ${f.descripcion}</p>
+        </div>
+      `).join('');
+
+      timelineList.innerHTML = historial.map(h => `
+        <li><b>${new Date(h.created_at).toLocaleString()}:</b> Cambio a <span class="font-bold">${h.nuevo_estado}</span> por ${h.usuario_nombre}</li>
+      `).join('');
+
+      showTab('detailTab');
     }
 
-    async function cambiar(id, nuevo_estado) {
-      await fetch(`${API_URL}/tickets/${id}/estado`, {
+    async function submitEstadoChange() {
+      const res = await fetch(`${API_URL}/tickets/${currentTicketId}/estado`, {
         method: 'PATCH',
-        headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
-        body: JSON.stringify({ nuevo_estado })
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ nuevo_estado: changeEstadoSelect.value })
       });
-      cargarDashboard();
+      if (res.ok) viewTicket(currentTicketId);
+      else alert((await res.json()).error);
     }
 
-    async function subirFoto(id, input) {
-      if(input.files[0].size > 5 * 1024 * 1024) return alert('Máximo 5MB');
-      const fd = new FormData();
-      fd.append('foto', input.files[0]);
-      await fetch(`${API_URL}/tickets/${id}/fotos`, {
+    async function submitFoto() {
+      if (!fotoFile.files[0]) return alert('Seleccione una imagen');
+      const formData = new FormData();
+      formData.append('foto', fotoFile.files[0]);
+      formData.append('descripcion', fotoDesc.value);
+      formData.append('estado_asociado', changeEstadoSelect.value);
+
+      const res = await fetch(`${API_URL}/tickets/${currentTicketId}/fotos`, {
         method: 'POST',
-        headers: {'Authorization': `Bearer ${token}`},
-        body: fd
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
       });
-      alert('Foto subida');
+      if (res.ok) viewTicket(currentTicketId);
+      else alert((await res.json()).error);
     }
   </script>
 </body>
