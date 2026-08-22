@@ -43,6 +43,7 @@
       <nav class="w-64 bg-slate-800 text-slate-200 p-4 space-y-2">
         <button onclick="showTab('listTab')" class="w-full text-left py-2 px-3 rounded hover:bg-slate-700 font-medium">📋 Todos los Tickets</button>
         <button onclick="showTab('createTab')" class="w-full text-left py-2 px-3 rounded hover:bg-slate-700 font-medium">➕ Nuevo Ticket</button>
+        <button id="btnUsersTab" onclick="showTab('usersTab')" class="hidden w-full text-left py-2 px-3 rounded hover:bg-slate-700 font-medium">👥 Usuarios</button>
       </nav>
 
       <!-- Content Area -->
@@ -204,6 +205,54 @@
           </div>
         </section>
 
+        <!-- Pestaña: Gestión de Usuarios -->
+        <section id="usersTab" class="hidden space-y-6 max-w-4xl mx-auto">
+          <div class="bg-white p-6 rounded shadow space-y-4">
+            <h2 class="text-xl font-bold border-b pb-2">Crear Nuevo Usuario</h2>
+            <form id="userForm" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold mb-1">Nombre Completo *</label>
+                <input type="text" id="uNombre" required class="w-full border p-2 rounded text-sm">
+              </div>
+              <div>
+                <label class="block text-xs font-bold mb-1">Email / Usuario *</label>
+                <input type="email" id="uEmail" required class="w-full border p-2 rounded text-sm">
+              </div>
+              <div>
+                <label class="block text-xs font-bold mb-1">Contraseña *</label>
+                <input type="password" id="uPassword" required class="w-full border p-2 rounded text-sm">
+              </div>
+              <div>
+                <label class="block text-xs font-bold mb-1">Rol *</label>
+                <select id="uRol" required class="w-full border p-2 rounded text-sm">
+                  <option value="TECNICO">Técnico</option>
+                  <option value="ADMIN">Administrador</option>
+                </select>
+              </div>
+              <div class="md:col-span-2">
+                <button type="submit" class="bg-blue-700 text-white font-bold px-4 py-2 rounded hover:bg-blue-800 text-sm">Registrar Usuario</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="bg-white rounded shadow overflow-x-auto">
+            <h3 class="font-bold p-4 border-b">Lista de Usuarios</h3>
+            <table class="w-full text-left border-collapse">
+              <thead>
+                <tr class="bg-slate-200 text-xs font-bold uppercase text-slate-600">
+                  <th class="p-3">ID</th>
+                  <th class="p-3">Nombre</th>
+                  <th class="p-3">Email</th>
+                  <th class="p-3">Rol</th>
+                  <th class="p-3">Estado</th>
+                  <th class="p-3">Acción</th>
+                </tr>
+              </thead>
+              <tbody id="usersTable" class="text-sm divide-y"></tbody>
+            </table>
+          </div>
+        </section>
+
       </main>
     </div>
   </div>
@@ -236,6 +285,11 @@
       app.classList.remove('hidden');
       const user = JSON.parse(localStorage.getItem('user'));
       userInfo.innerText = `${user.nombre} (${user.rol})`;
+      
+      if (user.rol === 'ADMIN') {
+        btnUsersTab.classList.remove('hidden');
+      }
+
       loadTecnicos();
       showTab('listTab');
     }
@@ -243,9 +297,14 @@
     function logout() { localStorage.clear(); location.reload(); }
 
     function showTab(tabId) {
-      ['listTab', 'createTab', 'detailTab'].forEach(id => document.getElementById(id).classList.add('hidden'));
+      ['listTab', 'createTab', 'detailTab', 'usersTab'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+      });
       document.getElementById(tabId).classList.remove('hidden');
+      
       if (tabId === 'listTab') loadTickets(1);
+      if (tabId === 'usersTab') renderUsersTable();
     }
 
     async function loadTecnicos() {
@@ -390,6 +449,65 @@
       });
       if (res.ok) viewTicket(currentTicketId);
       else alert((await res.json()).error);
+    }
+
+    document.getElementById('userForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const payload = {
+        nombre: uNombre.value,
+        email: uEmail.value,
+        password: uPassword.value,
+        rol: uRol.value
+      };
+
+      const res = await fetch(`${API_URL}/usuarios`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        alert('Usuario registrado con éxito');
+        userForm.reset();
+        renderUsersTable();
+      } else {
+        alert((await res.json()).error);
+      }
+    });
+
+    async function renderUsersTable() {
+      const res = await fetch(`${API_URL}/usuarios`, { headers: { 'Authorization': `Bearer ${token}` } });
+      const users = await res.json();
+
+      usersTable.innerHTML = users.map(u => `
+        <tr>
+          <td class="p-3">${u.id}</td>
+          <td class="p-3 font-semibold">${u.nombre}</td>
+          <td class="p-3">${u.email}</td>
+          <td class="p-3"><span class="px-2 py-0.5 text-xs rounded ${u.rol === 'ADMIN' ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800'}">${u.rol}</span></td>
+          <td class="p-3"><span class="px-2 py-0.5 text-xs rounded ${u.estado === 'ACTIVO' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}">${u.estado}</span></td>
+          <td class="p-3">
+            <button onclick="toggleUserStatus(${u.id}, '${u.estado}')" class="text-xs ${u.estado === 'ACTIVO' ? 'bg-red-600' : 'bg-green-600'} text-white px-2 py-1 rounded">
+              ${u.estado === 'ACTIVO' ? 'Inactivar' : 'Activar'}
+            </button>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function toggleUserStatus(id, currentStatus) {
+      const newStatus = currentStatus === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO';
+      const res = await fetch(`${API_URL}/usuarios/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ estado: newStatus })
+      });
+
+      if (res.ok) {
+        renderUsersTable();
+      } else {
+        alert((await res.json()).error);
+      }
     }
   </script>
 </body>
