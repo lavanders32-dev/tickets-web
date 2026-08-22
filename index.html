@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Tickets Gratis</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-4">
+  <div id="login" class="max-w-md mx-auto bg-white p-6 rounded shadow mt-10">
+    <h2 class="text-xl font-bold mb-4">Login</h2>
+    <input type="email" id="email" placeholder="admin@admin.com" class="border w-full p-2 mb-2 rounded">
+    <input type="password" id="pass" placeholder="admin123" class="border w-full p-2 mb-4 rounded">
+    <button onclick="login()" class="bg-blue-600 text-white w-full py-2 rounded">Entrar</button>
+  </div>
+
+  <div id="app" class="hidden max-w-4xl mx-auto bg-white p-6 rounded shadow">
+    <div class="flex justify-between items-center mb-6">
+      <h1 class="text-2xl font-bold">Gestión de Tickets</h1>
+      <button onclick="logout()" class="bg-red-500 text-white px-3 py-1 rounded">Cerrar Sesión</button>
+    </div>
+
+    <!-- Formulario Crear Ticket -->
+    <div class="mb-6 p-4 border rounded">
+      <h3 class="font-bold mb-2">Crear Ticket</h3>
+      <input type="text" id="titulo" placeholder="Título" class="border w-full p-2 mb-2 rounded">
+      <textarea id="desc" placeholder="Descripción" class="border w-full p-2 mb-2 rounded"></textarea>
+      <select id="marca" class="border w-full p-2 mb-2 rounded"></select>
+      <button onclick="crearTicket()" class="bg-green-600 text-white px-4 py-2 rounded">Guardar</button>
+    </div>
+
+    <!-- Listado -->
+    <div id="lista" class="space-y-4"></div>
+  </div>
+
+  <script>
+    // CAMBIA ESTA URL POR LA DE TU BACKEND EN RENDER:
+    const API_URL = "https://sistema-tickets-api-u0gt.onrender.com/api"; 
+    let token = localStorage.getItem('token');
+
+    if (token) cargarDashboard();
+
+    async function login() {
+      const res = await fetch(`${API_URL}/login`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ email: email.value, password: pass.value })
+      });
+      const data = await res.json();
+      if(res.ok) {
+        token = data.token;
+        localStorage.setItem('token', token);
+        cargarDashboard();
+      } else alert(data.error);
+    }
+
+    function logout() { localStorage.clear(); location.reload(); }
+
+    async function cargarDashboard() {
+      document.getElementById('login').classList.add('hidden');
+      document.getElementById('app').classList.remove('hidden');
+      
+      // Cargar marcas
+      const mRes = await fetch(`${API_URL}/marcas`, { headers: {'Authorization': `Bearer ${token}`} });
+      const marcas = await mRes.json();
+      marca.innerHTML = marcas.map(m => `<option value="${m.id}">${m.nombre}</option>`).join('');
+
+      // Cargar tickets
+      const tRes = await fetch(`${API_URL}/tickets`, { headers: {'Authorization': `Bearer ${token}`} });
+      const tData = await tRes.json();
+      
+      lista.innerHTML = tData.tickets.map(t => `
+        <div class="border p-4 rounded flex justify-between items-center">
+          <div>
+            <h4 class="font-bold">${t.titulo} <span class="text-xs bg-gray-200 p-1 rounded">${t.estado}</span></h4>
+            <p class="text-sm text-gray-600">${t.descripcion}</p>
+          </div>
+          <div>
+            ${t.estado === 'RECEPCION' ? `<button onclick="cambiar(${t.id}, 'EN_REPARACION')" class="text-xs bg-yellow-500 text-white p-2 rounded">Reparar</button>` : ''}
+            ${t.estado === 'EN_REPARACION' ? `<button onclick="cambiar(${t.id}, 'FINALIZADO')" class="text-xs bg-green-500 text-white p-2 rounded">Finalizar</button>` : ''}
+            ${t.estado !== 'FINALIZADO' ? `<input type="file" onchange="subirFoto(${t.id}, this)" class="text-xs ml-2">` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    async function crearTicket() {
+      await fetch(`${API_URL}/tickets`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
+        body: JSON.stringify({ titulo: titulo.value, descripcion: desc.value, marca_id: marca.value })
+      });
+      cargarDashboard();
+    }
+
+    async function cambiar(id, nuevo_estado) {
+      await fetch(`${API_URL}/tickets/${id}/estado`, {
+        method: 'PATCH',
+        headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
+        body: JSON.stringify({ nuevo_estado })
+      });
+      cargarDashboard();
+    }
+
+    async function subirFoto(id, input) {
+      if(input.files[0].size > 5 * 1024 * 1024) return alert('Máximo 5MB');
+      const fd = new FormData();
+      fd.append('foto', input.files[0]);
+      await fetch(`${API_URL}/tickets/${id}/fotos`, {
+        method: 'POST',
+        headers: {'Authorization': `Bearer ${token}`},
+        body: fd
+      });
+      alert('Foto subida');
+    }
+  </script>
+</body>
+</html>
